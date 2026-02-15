@@ -101,7 +101,7 @@ async function run() {
 
         next();
       } catch (error) {
-        res.status(500).send({ message: "Server error" });
+        res.status(500).send({ message: "Server Error" });
       }
     };
 
