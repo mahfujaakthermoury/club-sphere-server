@@ -50,14 +50,7 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    // Connect the client to the server	(optional starting in v4.7)
-    // await client.connect();
-    // Send a ping to confirm a successful connection
-    // await client.db("admin").command({ ping: 1 });
-    // console.log(
-    //   "Pinged your deployment. You successfully connected to MongoDB!"
-    // );
-
+    
     // Connections
     const database = client.db(process.env.DB_NAME);
     const usersCollection = database.collection("users");
@@ -132,12 +125,12 @@ async function run() {
 
     // payment
     app.post("/create-payment-intent", async (req, res) => {
-      const { amount, scholarshipId } = req.body;
+      const { amount, clubId } = req.body;
 
       const paymentIntent = await stripe.paymentIntents.create({
         amount: amount * 100, // convert to cents
         currency: "usd",
-        metadata: { scholarshipId },
+        metadata: { clubId },
       });
 
       res.send({ clientSecret: paymentIntent.client_secret });
@@ -145,14 +138,14 @@ async function run() {
     // Save Payment Info
     app.post("/payments", async (req, res) => {
       try {
-        const { scholarshipId, amount, transactionId, email } = req.body;
+        const { clubId, amount, transactionId, email } = req.body;
 
-        if (!scholarshipId || !amount || !transactionId || !email) {
+        if (!clubId || !amount || !transactionId || !email) {
           return res.status(400).send({ message: "Missing payment fields" });
         }
 
         const paymentData = {
-          scholarshipId,
+          clubId,
           amount,
           transactionId,
           email,
@@ -203,7 +196,7 @@ async function run() {
         const { role } = req.body;
 
         // Validate role
-        const validRoles = ["Student", "Moderator"];
+        const validRoles = ["Member", "Moderator"];
         if (!validRoles.includes(role)) {
           return res.status(400).send({ message: "Invalid role value" });
         }
@@ -285,14 +278,14 @@ async function run() {
 
         if (search) {
           query.$or = [
-            { scholarshipName: { $regex: search, $options: "i" } },
+            { clubName: { $regex: search, $options: "i" } },
             { universityName: { $regex: search, $options: "i" } },
             { universityCountry: { $regex: search, $options: "i" } },
           ];
         }
 
         if (category) {
-          query.scholarshipCategory = category;
+          query.clubCategory = category;
         }
 
         if (sortBy) {
@@ -378,12 +371,12 @@ async function run() {
       try {
         const id = req.params.id;
 
-        // Optional: verify that the user deleting this scholarship is the owner/admin
-        const scholarship = await clubsCollection.findOne({
+        // Optional: verify that the user deleting this club is the owner/admin
+        const club = await clubsCollection.findOne({
           _id: new ObjectId(id),
         });
-        if (!scholarship)
-          return res.status(404).send({ message: "Scholarship not found" });
+        if (!club)
+          return res.status(404).send({ message: "club not found" });
 
         const result = await clubsCollection.deleteOne({
           _id: new ObjectId(id),
@@ -399,8 +392,8 @@ async function run() {
       }
     });
 
-    // GET admin scholarship data
-    app.get("/scholarship/data/:id", async (req, res) => {
+    // GET admin club data
+    app.get("/club/data/:id", async (req, res) => {
       try {
         const id = req.params.id;
         const result = await clubsCollection.findOne({
@@ -408,7 +401,7 @@ async function run() {
         });
 
         if (!result) {
-          return res.status(404).send({ message: "No scholarship found" });
+          return res.status(404).send({ message: "No club found" });
         }
 
         res.send(result);
@@ -416,8 +409,8 @@ async function run() {
         res.status(500).send({ message: "Server error" });
       }
     });
-    // UPDATE admin scholarship data
-    app.put("/scholarship/update/:id", async (req, res) => {
+    // UPDATE admin club data
+    app.put("/club/update/:id", async (req, res) => {
       try {
         const id = req.params.id;
         const data = req.body;
@@ -437,17 +430,17 @@ async function run() {
       }
     });
 
-    // GET reviews filtered by scholarshipId
+    // GET reviews filtered by clubId
     app.get("/reviews", async (req, res) => {
       try {
-        const scholarshipId = req.query.scholarshipId;
+        const clubId = req.query.clubId;
         const email = req.query.email;
         const modMail = req.query.modMail;
 
         let query = {};
 
-        if (scholarshipId) {
-          query.scholarshipId = scholarshipId;
+        if (clubId) {
+          query.clubId = clubId;
         }
 
         if (email) {
@@ -488,8 +481,8 @@ async function run() {
       try {
         const {
           scholar,
-          scholarshipId,
-          scholarshipName,
+          clubId,
+          clubName,
           universityName,
           fees,
           applicant,
@@ -502,8 +495,8 @@ async function run() {
         // Validation
         if (
           !scholar ||
-          !scholarshipId ||
-          !scholarshipName ||
+          !clubId ||
+          !clubName ||
           !universityName ||
           !fees ||
           !applicant ||
@@ -514,8 +507,8 @@ async function run() {
 
         const newApplication = {
           scholar,
-          scholarshipId,
-          scholarshipName,
+          clubId,
+          clubName,
           universityName,
           fees,
           applicant,
@@ -688,9 +681,9 @@ async function run() {
     app.post("/reviews", async (req, res) => {
       try {
         const {
-          scholarshipId,
+          clubId,
           universityName,
-          scholarshipName,
+          clubName,
           userName,
           userEmail,
           postByEmail,
@@ -701,7 +694,7 @@ async function run() {
         } = req.body;
 
         if (
-          !scholarshipId ||
+          !clubId ||
           !userName ||
           !userEmail ||
           !ratingPoint ||
@@ -714,9 +707,9 @@ async function run() {
         }
 
         const newReview = {
-          scholarshipId,
+          clubId,
           universityName,
-          scholarshipName,
+          clubName,
           userName,
           userEmail,
           postByEmail,
