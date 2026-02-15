@@ -351,12 +351,12 @@ async function run() {
       const result = await clubsCollection.find({}).limit(6).toArray();
       res.send(result);
     });
-    // GET admin clubs
-    app.get("/clubs/:admin", async (req, res) => {
-      const adminEmail = req.params.admin;
+    // GET moderator clubs
+    app.get("/clubs/:moderator", async (req, res) => {
+      const moderatorEmail = req.params.moderator;
 
       const result = await clubsCollection
-        .find({ postedUserEmail: adminEmail })
+        .find({ postedUserEmail: moderatorEmail })
         .toArray();
       res.send(result);
     });
@@ -371,7 +371,7 @@ async function run() {
       try {
         const id = req.params.id;
 
-        // Optional: verify that the user deleting this club is the owner/admin
+        // Optional: verify that the user deleting this club is the moderator
         const club = await clubsCollection.findOne({
           _id: new ObjectId(id),
         });
@@ -392,7 +392,7 @@ async function run() {
       }
     });
 
-    // GET admin club data
+    // GET moderator club data
     app.get("/club/data/:id", async (req, res) => {
       try {
         const id = req.params.id;
@@ -409,7 +409,7 @@ async function run() {
         res.status(500).send({ message: "Server error" });
       }
     });
-    // UPDATE admin club data
+    // UPDATE moderator club data
     app.put("/club/update/:id", async (req, res) => {
       try {
         const id = req.params.id;
