@@ -290,7 +290,7 @@ async function run() {
 
         if (sortBy) {
           const sortOrder = order === "asc" ? 1 : -1;
-          if (sortBy === "fees") sortOption.applicationFees = sortOrder;
+          if (sortBy === "fees") sortOption.membershipFee = sortOrder;
           if (sortBy === "date") sortOption.postedDate = sortOrder;
         }
 
