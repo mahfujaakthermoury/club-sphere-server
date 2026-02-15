@@ -23,5 +23,4 @@ Club Managers can create and manage clubs and events
 
 Admins can monitor users, payments, and overall platform activity
 
-
 The system is designed to simulate a real-world SaaS-style membership and event management platform.

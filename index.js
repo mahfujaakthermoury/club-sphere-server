@@ -14,6 +14,7 @@ const app = express();
 app.use(
   cors({
     origin: [
+      "https://scholarstream-b12a11-nahiyan.netlify.app",
       "http://localhost:5173",
     ],
     credentials: true,
@@ -49,6 +50,13 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
+    // Connect the client to the server	(optional starting in v4.7)
+    // await client.connect();
+    // Send a ping to confirm a successful connection
+    // await client.db("admin").command({ ping: 1 });
+    // console.log(
+    //   "Pinged your deployment. You successfully connected to MongoDB!"
+    // );
 
     // Connections
     const database = client.db(process.env.DB_NAME);
@@ -59,6 +67,7 @@ async function run() {
     const paymentsCollection = database.collection("payments");
 
     // jwt
+    // CREATE JWT
     app.post("/jwt", async (req, res) => {
       const user = req.body;
       const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
@@ -120,6 +129,49 @@ async function run() {
         res.status(500).send({ message: "Server error" });
       }
     };
+
+    // payment
+    app.post("/create-payment-intent", async (req, res) => {
+      const { amount, scholarshipId } = req.body;
+
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount * 100, // convert to cents
+        currency: "usd",
+        metadata: { scholarshipId },
+      });
+
+      res.send({ clientSecret: paymentIntent.client_secret });
+    });
+    // Save Payment Info
+    app.post("/payments", async (req, res) => {
+      try {
+        const { scholarshipId, amount, transactionId, email } = req.body;
+
+        if (!scholarshipId || !amount || !transactionId || !email) {
+          return res.status(400).send({ message: "Missing payment fields" });
+        }
+
+        const paymentData = {
+          scholarshipId,
+          amount,
+          transactionId,
+          email,
+          paidAt: new Date(),
+          status: "completed",
+        };
+
+        const result = await paymentsCollection.insertOne(paymentData);
+
+        res.send({
+          success: true,
+          message: "Payment saved successfully",
+          insertedId: result.insertedId,
+        });
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Server error while saving payment" });
+      }
+    });
 
     // GET All Users
     app.get("/users", async (req, res) => {
