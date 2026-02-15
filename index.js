@@ -14,7 +14,7 @@ const app = express();
 app.use(
   cors({
     origin: [
-      "https://scholarstream-b12a11-nahiyan.netlify.app",
+      "https://lustrous-sherbet-1d11fb.netlify.app",
       "http://localhost:5173",
     ],
     credentials: true,
@@ -86,7 +86,7 @@ async function run() {
         .send({ success: true });
     });
 
-    // admin or moderator middleware
+    // Admin or Moderator middleware
     const verifyAdmin = async (req, res, next) => {
       try {
         const email = req.decoded?.email;
@@ -96,7 +96,7 @@ async function run() {
 
         const user = await usersCollection.findOne({ email });
         if (!user || user.role !== "Admin") {
-          return res.status(403).send({ message: "Forbidden: Admin only" });
+          return res.status(403).send({ message: "Forbidden: Admin Only" });
         }
 
         next();
