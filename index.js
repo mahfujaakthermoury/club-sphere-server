@@ -141,7 +141,7 @@ async function run() {
       try {
         const { clubId, amount, transactionId, email } = req.body;
   
-        if (!clubId || !amount || !transactionId || !email) {
+        if (!clubId || amount == null || !transactionId || !email) {
           return res.status(400).send({ message: "Missing payment fields" });
         }
 
