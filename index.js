@@ -129,7 +129,7 @@ async function run() {
       const { amount, clubId } = req.body;
 
       const paymentIntent = await stripe.paymentIntents.create({
-        amount: amount * 100, // convert to cents
+        amount: parseInt(amount * 100), // convert to cents
         currency: "usd",
         metadata: { clubId },
       });
@@ -140,7 +140,7 @@ async function run() {
     app.post("/payments", async (req, res) => {
       try {
         const { clubId, amount, transactionId, email } = req.body;
-
+  
         if (!clubId || !amount || !transactionId || !email) {
           return res.status(400).send({ message: "Missing payment fields" });
         }
@@ -557,7 +557,6 @@ async function run() {
           scholar,
           clubId,
           clubName,
-          universityName,
           fees,
           applicant,
           userName,
@@ -571,7 +570,6 @@ async function run() {
           !scholar ||
           !clubId ||
           !clubName ||
-          !universityName ||
           !fees ||
           !applicant ||
           !userName
@@ -583,7 +581,6 @@ async function run() {
           scholar,
           clubId,
           clubName,
-          universityName,
           fees,
           applicant,
           userName,
