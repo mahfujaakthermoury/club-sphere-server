@@ -14,8 +14,8 @@ const app = express();
 app.use(
   cors({
     origin: [
-      "https://lustrous-sherbet-1d11fb.netlify.app",
       "http://localhost:5173",
+      "https://lustrous-sherbet-1d11fb.netlify.app",
     ],
     credentials: true,
   })
@@ -554,10 +554,10 @@ async function run() {
     app.post("/applications", async (req, res) => {
       try {
         const {
-          scholar,
           clubId,
+          category,
           clubName,
-          fees,
+          membershipFee,
           applicant,
           userName,
           appliedDate,
@@ -565,12 +565,11 @@ async function run() {
           payment,
         } = req.body;
 
+        console.log(req.body);
         // Validation
         if (
-          !scholar ||
           !clubId ||
           !clubName ||
-          !fees ||
           !applicant ||
           !userName
         ) {
@@ -578,10 +577,10 @@ async function run() {
         }
 
         const newApplication = {
-          scholar,
           clubId,
+          category,
           clubName,
-          fees,
+          membershipFee,
           applicant,
           userName,
           appliedDate: appliedDate || new Date(),
@@ -673,7 +672,7 @@ async function run() {
       const { email } = req.params;
       try {
         const apps = await appsCollection
-          .find({ "scholar.postedUserEmail": email })
+          .find({ "category.postedUserEmail": email })
           .toArray(); // optionally filter by moderator's assigned universities
         res.send(apps);
       } catch (error) {
@@ -753,7 +752,7 @@ async function run() {
       try {
         const {
           clubId,
-          universityName,
+          location,
           clubName,
           userName,
           userEmail,
@@ -779,7 +778,7 @@ async function run() {
 
         const newReview = {
           clubId,
-          universityName,
+          location,
           clubName,
           userName,
           userEmail,
@@ -898,7 +897,7 @@ async function run() {
         const paymentsData = await paymentsCollection.find().toArray();
         const totalFees = paymentsData.reduce((sum, p) => sum + p.amount, 0);
 
-        // Count applications per university
+        // Count applications per club
         const apps = await appsCollection.find().toArray();
         const appCountPerUniversity = apps.reduce((acc, curr) => {
           acc[curr.universityName] = (acc[curr.universityName] || 0) + 1;
