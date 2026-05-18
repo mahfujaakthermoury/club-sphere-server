@@ -57,7 +57,7 @@ async function run() {
     const clubsCollection = database.collection("clubs");
     const eventsCollection = database.collection("events");
     const appsCollection = database.collection("applications");
-    const reviewsCollection = database.collection("reviews");
+    const regisCollection = database.collection("registrations");
     const paymentsCollection = database.collection("payments");
 
     // jwt
@@ -87,7 +87,7 @@ async function run() {
         .send({ success: true });
     });
 
-    // Admin or Moderator middleware
+    // Admin or Manager middleware
     const verifyAdmin = async (req, res, next) => {
       try {
         const email = req.decoded?.email;
@@ -106,7 +106,7 @@ async function run() {
       }
     };
 
-    const verifyModerator = async (req, res, next) => {
+    const verifyManager = async (req, res, next) => {
       try {
         const email = req.decoded?.email;
         if (!email) {
@@ -114,8 +114,8 @@ async function run() {
         }
 
         const user = await usersCollection.findOne({ email });
-        if (!user || (user.role !== "Moderator" && user.role !== "Admin")) {
-          return res.status(403).send({ message: "Forbidden: Moderator only" });
+        if (!user || (user.role !== "Manager" && user.role !== "Admin")) {
+          return res.status(403).send({ message: "Forbidden: Manager only" });
         }
 
         next();
@@ -197,7 +197,7 @@ async function run() {
         const { role } = req.body;
 
         // Validate role
-        const validRoles = ["Member", "Moderator"];
+        const validRoles = ["Member", "Manager"];
         if (!validRoles.includes(role)) {
           return res.status(400).send({ message: "Invalid role value" });
         }
@@ -217,22 +217,22 @@ async function run() {
         res.status(500).send({ message: "Server error" });
       }
     });
-    // Assign moderator
+    // Assign manager
     app.put("/users/assign/:email", async (req, res) => {
       try {
         const { email } = req.params;
-        const { moderatorFor } = req.body;
+        const { managerFor } = req.body;
 
         const result = await usersCollection.updateOne(
           { email },
-          { $set: { moderatorFor } }
+          { $set: { managerFor } }
         );
 
         if (result.matchedCount === 0) {
           return res.status(404).send({ message: "User not found" });
         }
 
-        res.send({ success: true, message: "Moderator assigned successfully" });
+        res.send({ success: true, message: "Manager assigned successfully" });
       } catch (err) {
         console.error(err);
         res.status(500).send({ message: "Server error" });
@@ -408,12 +408,12 @@ async function run() {
       const result = await clubsCollection.find({}).limit(6).toArray();
       res.send(result);
     });
-    // GET moderator clubs
-    app.get("/clubs/:moderator", async (req, res) => {
-      const moderatorEmail = req.params.moderator;
+    // GET manager clubs
+    app.get("/clubs/:manager", async (req, res) => {
+      const managerEmail = req.params.manager;
 
       const result = await clubsCollection
-        .find({ postedUserEmail: moderatorEmail })
+        .find({ postedUserEmail: managerEmail })
         .toArray();
       res.send(result);
     });
@@ -428,7 +428,7 @@ async function run() {
       try {
         const id = req.params.id;
 
-        // Optional: verify that the user deleting this club is the moderator
+        // Optional: verify that the user deleting this club is the manager
         const club = await clubsCollection.findOne({
           _id: new ObjectId(id),
         });
@@ -449,7 +449,7 @@ async function run() {
       }
     });
 
-    // GET moderator club data
+    // GET manager club data
     app.get("/club/data/:id", async (req, res) => {
       try {
         const id = req.params.id;
@@ -466,7 +466,7 @@ async function run() {
         res.status(500).send({ message: "Server error" });
       }
     });
-    // UPDATE moderator club data
+    // UPDATE manager club data
     app.put("/club/update/:id", async (req, res) => {
       try {
         const id = req.params.id;
@@ -487,12 +487,12 @@ async function run() {
       }
     });
 
-    // GET moderator events
-    app.get("/events/:moderator", async (req, res) => {
-      const moderatorEmail = req.params.moderator;
+    // GET manager events
+    app.get("/events/:manager", async (req, res) => {
+      const managerEmail = req.params.manager;
 
       const result = await eventsCollection
-        .find({ postedUserEmail: moderatorEmail })
+        .find({ postedUserEmail: managerEmail })
         .toArray();
       res.send(result);
     });
@@ -504,8 +504,8 @@ async function run() {
       res.send(result);
     });
 
-    // GET reviews filtered by clubId
-    app.get("/reviews", async (req, res) => {
+    // GET registrations filtered by clubId
+    app.get("/registrations", async (req, res) => {
       try {
         const clubId = req.query.clubId;
         const email = req.query.email;
@@ -525,7 +525,7 @@ async function run() {
           query.postByEmail = modMail;
         }
 
-        const result = await reviewsCollection.find(query).toArray();
+        const result = await regisCollection.find(query).toArray();
         res.send(result);
       } catch (error) {
         console.error(error);
@@ -533,10 +533,10 @@ async function run() {
       }
     });
     // Delete Review
-    app.delete("/reviews/:id", async (req, res) => {
+    app.delete("/registrations/:id", async (req, res) => {
       try {
         const { id } = req.params;
-        const result = await reviewsCollection.deleteOne({
+        const result = await regisCollection.deleteOne({
           _id: new ObjectId(id),
         });
 
@@ -667,13 +667,13 @@ async function run() {
       }
     });
 
-    // GET all applications (Moderator)
+    // GET all applications (Manager)
     app.get("/applications/:email", async (req, res) => {
       const { email } = req.params;
       try {
         const apps = await appsCollection
           .find({ "category.postedUserEmail": email })
-          .toArray(); // optionally filter by moderator's assigned universities
+          .toArray(); // optionally filter by manager's assigned universities
         res.send(apps);
       } catch (error) {
         console.error(error);
@@ -747,96 +747,7 @@ async function run() {
       }
     });
 
-    // POST Reviews
-    app.post("/reviews", async (req, res) => {
-      try {
-        const {
-          clubId,
-          location,
-          clubName,
-          userName,
-          userEmail,
-          postByEmail,
-          userImage,
-          ratingPoint,
-          reviewComment,
-          reviewDate,
-        } = req.body;
-
-        if (
-          !clubId ||
-          !userName ||
-          !userEmail ||
-          !ratingPoint ||
-          !reviewComment ||
-          !postByEmail
-        ) {
-          return res
-            .status(400)
-            .send({ message: "Missing required review fields" });
-        }
-
-        const newReview = {
-          clubId,
-          location,
-          clubName,
-          userName,
-          userEmail,
-          postByEmail,
-          userImage,
-          ratingPoint: Number(ratingPoint),
-          reviewComment,
-          reviewDate: reviewDate || new Date(),
-        };
-
-        const result = await reviewsCollection.insertOne(newReview);
-
-        res.send({
-          success: true,
-          message: "Review added successfully",
-          insertedId: result.insertedId,
-        });
-      } catch (error) {
-        console.error(error);
-        res.status(500).send({ message: "Server error while saving review" });
-      }
-    });
-    // UPDATE Review
-    app.put("/reviews/:id", async (req, res) => {
-      try {
-        const { id } = req.params;
-        const { reviewComment, ratingPoint } = req.body;
-
-        if (!ObjectId.isValid(id)) {
-          return res.status(400).send({ message: "Invalid review ID" });
-        }
-
-        const updateDoc = {
-          $set: {
-            reviewComment,
-            ratingPoint: Number(ratingPoint),
-            reviewDate: new Date(), // update timestamp
-          },
-        };
-
-        const result = await reviewsCollection.updateOne(
-          { _id: new ObjectId(id) },
-          updateDoc
-        );
-
-        if (result.matchedCount === 0) {
-          return res.status(404).send({ message: "Review not found" });
-        }
-
-        res.send({
-          success: true,
-          message: "Review updated successfully",
-        });
-      } catch (error) {
-        console.error(error);
-        res.status(500).send({ message: "Server error updating review" });
-      }
-    });
+    //......
 
     // GET Single Application by ID
     app.get("/applications/details/:id", async (req, res) => {
@@ -899,8 +810,8 @@ async function run() {
 
         // Count applications per club
         const apps = await appsCollection.find().toArray();
-        const appCountPerUniversity = apps.reduce((acc, curr) => {
-          acc[curr.universityName] = (acc[curr.universityName] || 0) + 1;
+        const appCountPerClub = apps.reduce((acc, curr) => {
+          acc[curr.clubName] = (acc[curr.clubName] || 0) + 1;
           return acc;
         }, {});
 
@@ -908,7 +819,7 @@ async function run() {
           usersCount,
           clubsCount,
           totalFees,
-          appCountPerUniversity,
+          appCountPerClub,
         });
       } catch (error) {
         console.error(error);
@@ -916,7 +827,7 @@ async function run() {
           usersCount: 0,
           clubsCount: 0,
           totalFees: 0,
-          appCountPerUniversity: {},
+          appCountPerClub: {},
         });
       }
     });
