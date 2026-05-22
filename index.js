@@ -286,7 +286,7 @@ async function run() {
         }
 
         if (category) {
-          query.clubCategory = category;
+          query.category = category; //clubCategory
         }
 
         if (sortBy) {
@@ -532,31 +532,16 @@ async function run() {
         res.status(500).send({ message: "Server error" });
       }
     });
-    // Delete Review
-    app.delete("/registrations/:id", async (req, res) => {
-      try {
-        const { id } = req.params;
-        const result = await regisCollection.deleteOne({
-          _id: new ObjectId(id),
-        });
-
-        if (result.deletedCount === 0) {
-          return res.status(404).send({ message: "Review not found" });
-        }
-
-        res.send({ success: true });
-      } catch (error) {
-        res.status(500).send({ message: "Server error deleting review" });
-      }
-    });
 
     // CREATE Application
     app.post("/applications", async (req, res) => {
       try {
         const {
           clubId,
+          clubImage,
           category,
           clubName,
+          location,
           membershipFee,
           applicant,
           userName,
@@ -578,8 +563,10 @@ async function run() {
 
         const newApplication = {
           clubId,
+          clubImage,
           category,
           clubName,
+          location,
           membershipFee,
           applicant,
           userName,
