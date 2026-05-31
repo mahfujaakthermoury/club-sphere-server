@@ -418,7 +418,7 @@ async function run() {
       res.send(result);
     });
 
-      // GET: manager's all applications
+    // GET: manager's all applications
     app.get("/clubs/user", async (req, res) => {
       try {
         const email = req.query.email;
@@ -504,6 +504,33 @@ async function run() {
         res.send({ success: true, message: "Updated successfully" });
       } catch (error) {
         res.status(500).send({ message: "Server error" });
+      }
+    });
+
+    // Update clubs status 
+    app.patch("/clubs/status/:id", async (req, res) => {
+      try {
+        const { id } = req.params;
+        const { status } = req.body;
+
+        const result = await clubsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          {
+            $set: {
+              status,
+            },
+          }
+        );
+
+        res.send({
+          success: true,
+          modifiedCount: result.modifiedCount,
+        });
+      } catch (error) {
+        res.status(500).send({
+          success: false,
+          message: "Failed to update status",
+        });
       }
     });
 
@@ -786,7 +813,7 @@ async function run() {
     // GET dashboard stats
     app.get("/analytics/stats", async (req, res) => {
       try {
-        const usersCount = await usersCollection.countDocuments();
+        const eventsCount = await eventsCollection.countDocuments();
         const clubsCount = await clubsCollection.countDocuments();
         const paymentsData = await paymentsCollection.find().toArray();
         const totalFees = paymentsData.reduce((sum, p) => sum + p.amount, 0);
@@ -799,7 +826,7 @@ async function run() {
         }, {});
 
         res.send({
-          usersCount,
+          eventsCount,
           clubsCount,
           totalFees,
           appCountPerClub,
@@ -807,7 +834,7 @@ async function run() {
       } catch (error) {
         console.error(error);
         res.status(500).send({
-          usersCount: 0,
+          eventsCount: 0,
           clubsCount: 0,
           totalFees: 0,
           appCountPerClub: {},
