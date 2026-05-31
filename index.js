@@ -140,7 +140,7 @@ async function run() {
     app.post("/payments", async (req, res) => {
       try {
         const { clubId, amount, transactionId, email } = req.body;
-  
+
         if (!clubId || amount == null || !transactionId || !email) {
           return res.status(400).send({ message: "Missing payment fields" });
         }
@@ -417,6 +417,26 @@ async function run() {
         .toArray();
       res.send(result);
     });
+
+      // GET: manager's all applications
+    app.get("/clubs/user", async (req, res) => {
+      try {
+        const email = req.query.email;
+        if (!email) {
+          return res.status(400).send({ message: "Email query required" });
+        }
+
+        const result = await clubsCollection
+          .find({ managerEmail: email })
+          .toArray();
+
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Server error loading clubs" });
+      }
+    });
+
     // POST clubs
     app.post("/clubs", async (req, res) => {
       const data = req.body;
@@ -492,7 +512,7 @@ async function run() {
       const managerEmail = req.params.manager;
 
       const result = await eventsCollection
-        .find({ postedUserEmail: managerEmail })
+        .find({ managerEmail })
         .toArray();
       res.send(result);
     });
@@ -607,30 +627,30 @@ async function run() {
         res.status(500).send({ message: "Server error loading applications" });
       }
     });
-    app.delete("/applications/:id", async (req, res) => {
-      try {
-        const id = req.params.id;
+    // app.delete("/applications/:id", async (req, res) => {
+    //   try {
+    //     const id = req.params.id;
 
-        const appDoc = await appsCollection.findOne({ _id: new ObjectId(id) });
+    //     const appDoc = await appsCollection.findOne({ _id: new ObjectId(id) });
 
-        if (!appDoc)
-          return res.status(404).send({ message: "Application not found" });
+    //     if (!appDoc)
+    //       return res.status(404).send({ message: "Application not found" });
 
-        if (appDoc.applicationStatus !== "pending") {
-          return res
-            .status(403)
-            .send({ message: "Only pending applications can be deleted" });
-        }
+    //     if (appDoc.applicationStatus !== "pending") {
+    //       return res
+    //         .status(403)
+    //         .send({ message: "Only pending applications can be deleted" });
+    //     }
 
-        const result = await appsCollection.deleteOne({
-          _id: new ObjectId(id),
-        });
+    //     const result = await appsCollection.deleteOne({
+    //       _id: new ObjectId(id),
+    //     });
 
-        res.send({ success: true, deleted: result.deletedCount });
-      } catch (error) {
-        res.status(500).send({ message: "Server error deleting application" });
-      }
-    });
+    //     res.send({ success: true, deleted: result.deletedCount });
+    //   } catch (error) {
+    //     res.status(500).send({ message: "Server error deleting application" });
+    //   }
+    // });
 
     // GET: statistics
     app.get("/home/stats", async (req, res) => {
@@ -657,14 +677,19 @@ async function run() {
     // GET all applications (Manager)
     app.get("/applications/:email", async (req, res) => {
       const { email } = req.params;
+
       try {
-        const apps = await appsCollection
-          .find({ "category.postedUserEmail": email })
-          .toArray(); // optionally filter by manager's assigned universities
-        res.send(apps);
-      } catch (error) {
-        console.error(error);
-        res.status(500).send({ message: "Server error fetching applications" });
+        const applications = await appsCollection
+          .find({
+            managerEmail: email,
+          })
+          .toArray();
+
+        res.send(applications);
+      } catch (err) {
+        res.status(500).send({
+          message: "Server error",
+        });
       }
     });
 
@@ -755,35 +780,6 @@ async function run() {
       } catch (error) {
         console.error(error);
         res.status(500).send({ message: "Server error loading application" });
-      }
-    });
-    // UPDATE Application (Full Update)
-    app.put("/applications/:id", async (req, res) => {
-      try {
-        const { id } = req.params;
-
-        if (!ObjectId.isValid(id)) {
-          return res.status(400).send({ message: "Invalid application ID" });
-        }
-
-        const updateData = req.body;
-
-        const result = await appsCollection.updateOne(
-          { _id: new ObjectId(id) },
-          { $set: updateData }
-        );
-
-        if (result.matchedCount === 0) {
-          return res.status(404).send({ message: "Application not found" });
-        }
-
-        res.send({
-          success: true,
-          message: "Application updated successfully",
-        });
-      } catch (error) {
-        console.error(error);
-        res.status(500).send({ message: "Server error updating application" });
       }
     });
 
