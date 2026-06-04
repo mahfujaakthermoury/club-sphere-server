@@ -139,7 +139,7 @@ async function run() {
     // Save Payment Info
     app.post("/payments", async (req, res) => {
       try {
-        const { clubId, amount, transactionId, email } = req.body;
+        const { clubId, amount, clubName, transactionId, email } = req.body;
 
         if (!clubId || amount == null || !transactionId || !email) {
           return res.status(400).send({ message: "Missing payment fields" });
@@ -149,6 +149,8 @@ async function run() {
           clubId,
           amount,
           transactionId,
+          clubName,
+          type: "Club",
           email,
           paidAt: new Date(),
           status: "completed",
@@ -166,6 +168,14 @@ async function run() {
         res.status(500).send({ message: "Server error while saving payment" });
       }
     });
+
+    //get all payments transection 
+    app.get("/payments", async (req, res) => {
+      const result = await paymentsCollection.find().toArray();
+      console.log("Payments:", result.length);
+      res.send(result);
+    });
+
 
     // GET All Users
     app.get("/users", async (req, res) => {
@@ -374,6 +384,104 @@ async function run() {
       }
     });
 
+    app.get("/events/data/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+
+        if (!ObjectId.isValid(id)) {
+          return res.status(400).send({ message: "Invalid event ID" });
+        }
+
+        const result = await eventsCollection.findOne({
+          _id: new ObjectId(id),
+        });
+
+        if (!result) {
+          return res.status(404).send({ message: "Event not found" });
+        }
+
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Server error" });
+      }
+    });
+
+    // CREATE Registrations
+    app.post("/applications", async (req, res) => {
+      try {
+        const {
+          clubId,
+          clubName,
+          managerEmail,
+          location,
+          registrationsFee,
+          applicant,
+          userName,
+          registrarDate,
+          status,
+          payment,
+        } = req.body;
+
+        console.log(req.body);
+        // Validation
+        if (
+          !clubId ||
+          !clubName ||
+          !eventName ||
+          !applicant ||
+          !userName
+        ) {
+          return res.status(400).send({ message: "Missing fields" });
+        }
+
+        const newRegistrations = {
+          clubId,
+          clubName,
+          managerEmail,
+          location,
+          registrationsFee,
+          applicant,
+          userName,
+          registrarDate: registrarDate || new Date(),
+          status: status || "pending",
+          payment: payment,
+        };
+
+        const result = await regisCollection.insertOne(newRegistrations);
+
+        res.send({
+          success: true,
+          message: "Registration successfully",
+          insertedId: result.insertedId,
+        });
+      } catch (error) {
+        console.error(error);
+        res
+          .status(500)
+          .send({ message: "Server error while registration" });
+      }
+    });
+
+
+    // GET: user's all registrations
+    app.get("/registrations/user", async (req, res) => {
+      try {
+        const email = req.query.email;
+
+        console.log("Email:", email);
+
+        const result = await regisCollection
+          .find({ applicant: email })
+          .toArray();
+
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Server error loading registred events" });
+      }
+    });
+
     // GET Recommended Clubs
     app.get("/rec/clubs", async (req, res) => {
       try {
@@ -418,15 +526,35 @@ async function run() {
       res.send(result);
     });
 
-    // GET: manager's all applications
-    app.get("/clubs/user", async (req, res) => {
+    // GET: user's all applications
+    app.get("/applications/user", async (req, res) => {
       try {
         const email = req.query.email;
+
+        console.log("Email:", email);
+
+        const result = await appsCollection
+          .find({ applicant: email })
+          .toArray();
+
+        console.log("Result:", result);
+
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Server error loading applications" });
+      }
+    });
+
+    // GET: manager's all applications
+    app.get("/applications/:email", async (req, res) => {
+      try {
+        const email = req.params.email;
         if (!email) {
           return res.status(400).send({ message: "Email query required" });
         }
 
-        const result = await clubsCollection
+        const result = await appsCollection
           .find({ managerEmail: email })
           .toArray();
 
@@ -534,21 +662,47 @@ async function run() {
       }
     });
 
-    // GET manager events
-    app.get("/events/:manager", async (req, res) => {
-      const managerEmail = req.params.manager;
-
-      const result = await eventsCollection
-        .find({ managerEmail })
-        .toArray();
-      res.send(result);
-    });
-
     // POST events
     app.post("/events", async (req, res) => {
       const data = req.body;
       const result = await eventsCollection.insertOne(data);
       res.send(result);
+    });
+
+    // GET manager events
+    app.get("/events/manager/:email", async (req, res) => {
+      const email = req.params.email;
+
+      console.log("Route Email:", email);
+
+      const result = await eventsCollection
+        .find({ managerEmail: email })
+        .toArray();
+
+      console.log("Found Events:", result);
+
+      res.send(result);
+    });
+
+    // UPDATE manager event data
+    app.put("/event/update/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const data = req.body;
+
+        const result = await eventsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: data }
+        );
+
+        if (result.modifiedCount === 0) {
+          return res.status(400).send({ message: "No changes made" });
+        }
+
+        res.send({ success: true, message: "Updated successfully" });
+      } catch (error) {
+        res.status(500).send({ message: "Server error" });
+      }
     });
 
     // GET registrations filtered by clubId
@@ -588,6 +742,7 @@ async function run() {
           clubImage,
           category,
           clubName,
+          managerEmail,
           location,
           membershipFee,
           applicant,
@@ -613,6 +768,7 @@ async function run() {
           clubImage,
           category,
           clubName,
+          managerEmail,
           location,
           membershipFee,
           applicant,
@@ -636,24 +792,7 @@ async function run() {
           .send({ message: "Server error while saving application" });
       }
     });
-    // GET: user's all applications
-    app.get("/applications/user", async (req, res) => {
-      try {
-        const email = req.query.email;
-        if (!email) {
-          return res.status(400).send({ message: "Email query required" });
-        }
 
-        const result = await appsCollection
-          .find({ applicant: email })
-          .toArray();
-
-        res.send(result);
-      } catch (error) {
-        console.error(error);
-        res.status(500).send({ message: "Server error loading applications" });
-      }
-    });
     // app.delete("/applications/:id", async (req, res) => {
     //   try {
     //     const id = req.params.id;
@@ -701,24 +840,24 @@ async function run() {
       }
     });
 
-    // GET all applications (Manager)
-    app.get("/applications/:email", async (req, res) => {
-      const { email } = req.params;
+    // // GET all applications (Manager)
+    // app.get("/applications/:email", async (req, res) => {
+    //   const { email } = req.params;
 
-      try {
-        const applications = await appsCollection
-          .find({
-            managerEmail: email,
-          })
-          .toArray();
+    //   try {
+    //     const applications = await appsCollection
+    //       .find({
+    //         managerEmail: email,
+    //       })
+    //       .toArray();
 
-        res.send(applications);
-      } catch (err) {
-        res.status(500).send({
-          message: "Server error",
-        });
-      }
-    });
+    //     res.send(applications);
+    //   } catch (err) {
+    //     res.status(500).send({
+    //       message: "Server error",
+    //     });
+    //   }
+    // });
 
     // UPDATE application status
     app.put("/applications/:id/status", async (req, res) => {
@@ -841,6 +980,7 @@ async function run() {
         });
       }
     });
+
   } finally {
     // await client.close();
   }
