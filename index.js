@@ -296,13 +296,19 @@ async function run() {
         }
 
         if (category) {
-          query.category = category; //clubCategory
+           query.category = { $regex: category, $options: "i" };
         }
 
         if (sortBy) {
           const sortOrder = order === "asc" ? 1 : -1;
-          if (sortBy === "fees") sortOption.membershipFee = sortOrder;
-          if (sortBy === "date") sortOption.postedDate = sortOrder;
+
+          if (sortBy === "membershipFee") {
+            sortOption.membershipFee = sortOrder;
+          }
+
+          if (sortBy === "createdAt") {
+            sortOption.createdAt = sortOrder;
+          }
         }
 
         const skip = (Number(page) - 1) * Number(limit);
@@ -408,7 +414,7 @@ async function run() {
     });
 
     // CREATE Registrations
-    app.post("/applications", async (req, res) => {
+    app.post("/registrations", async (req, res) => {
       try {
         const {
           clubId,
@@ -523,6 +529,11 @@ async function run() {
       const result = await clubsCollection
         .find({ postedUserEmail: managerEmail })
         .toArray();
+      res.send(result);
+    });
+
+    app.get("/applications", async (req, res) => {
+      const result = await appsCollection.find().toArray();
       res.send(result);
     });
 
@@ -704,6 +715,13 @@ async function run() {
         res.status(500).send({ message: "Server error" });
       }
     });
+
+    app.get("/events", async (req, res) => {
+      const result = await eventsCollection.find({}).toArray();
+      res.send(result);
+    });
+
+
 
     // GET registrations filtered by clubId
     app.get("/registrations", async (req, res) => {
