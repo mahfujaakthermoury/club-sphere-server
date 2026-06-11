@@ -126,32 +126,50 @@ async function run() {
 
     // payment
     app.post("/create-payment-intent", async (req, res) => {
-      const { amount, clubId } = req.body;
+      const { amount, clubId, eventId } = req.body;
 
       const paymentIntent = await stripe.paymentIntents.create({
         amount: parseInt(amount * 100), // convert to cents
         currency: "usd",
-        metadata: { clubId },
+        metadata: {
+          clubId: clubId || "",
+          eventId: eventId || "",
+        },
       });
 
       res.send({ clientSecret: paymentIntent.client_secret });
     });
+
     // Save Payment Info
     app.post("/payments", async (req, res) => {
       try {
-        const { clubId, amount, clubName, transactionId, email } = req.body;
+        const {
+          clubId,
+          clubName,
+          eventId,
+          eventName,
+          amount,
+          transactionId,
+          email,
+        } = req.body;
 
-        if (!clubId || amount == null || !transactionId || !email) {
+        if ((!clubId && !eventId) || amount == null || !transactionId || !email) {
           return res.status(400).send({ message: "Missing payment fields" });
         }
 
         const paymentData = {
-          clubId,
+          clubId: clubId || null,
+          clubName: clubName || null,
+
+          eventId: eventId || null,
+          eventName: eventName || null,
+
           amount,
           transactionId,
-          clubName,
-          type: "Club",
           email,
+
+          type: clubId ? "Club" : "Event",
+
           paidAt: new Date(),
           status: "completed",
         };
@@ -296,7 +314,7 @@ async function run() {
         }
 
         if (category) {
-           query.category = { $regex: category, $options: "i" };
+          query.category = { $regex: category, $options: "i" };
         }
 
         if (sortBy) {
@@ -390,41 +408,18 @@ async function run() {
       }
     });
 
-    app.get("/events/data/:id", async (req, res) => {
-      try {
-        const id = req.params.id;
-
-        if (!ObjectId.isValid(id)) {
-          return res.status(400).send({ message: "Invalid event ID" });
-        }
-
-        const result = await eventsCollection.findOne({
-          _id: new ObjectId(id),
-        });
-
-        if (!result) {
-          return res.status(404).send({ message: "Event not found" });
-        }
-
-        res.send(result);
-      } catch (error) {
-        console.error(error);
-        res.status(500).send({ message: "Server error" });
-      }
-    });
-
     // CREATE Registrations
     app.post("/registrations", async (req, res) => {
       try {
         const {
+          eventId,
+          userEmail,
           clubId,
-          clubName,
+          eventName,
           managerEmail,
           location,
-          registrationsFee,
-          applicant,
-          userName,
-          registrarDate,
+          eventFee,
+          registeredAt,
           status,
           payment,
         } = req.body;
@@ -432,24 +427,22 @@ async function run() {
         console.log(req.body);
         // Validation
         if (
-          !clubId ||
-          !clubName ||
+          !eventId ||
           !eventName ||
-          !applicant ||
-          !userName
+          !userEmail
         ) {
           return res.status(400).send({ message: "Missing fields" });
         }
 
         const newRegistrations = {
+          eventId,
+          userEmail,
           clubId,
-          clubName,
+          eventName,
           managerEmail,
           location,
-          registrationsFee,
-          applicant,
-          userName,
-          registrarDate: registrarDate || new Date(),
+          eventFee,
+          registeredAt: registeredAt || new Date(),
           status: status || "pending",
           payment: payment,
         };
@@ -519,7 +512,7 @@ async function run() {
 
     // GET home clubs
     app.get("/home/clubs", async (req, res) => {
-      const result = await clubsCollection.find({}).limit(6).toArray();
+      const result = await clubsCollection.find({}).limit(8).toArray();
       res.send(result);
     });
     // GET manager clubs
@@ -721,6 +714,28 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/events/data/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+
+        if (!ObjectId.isValid(id)) {
+          return res.status(400).send({ message: "Invalid event ID" });
+        }
+
+        const result = await eventsCollection.findOne({
+          _id: new ObjectId(id),
+        });
+
+        if (!result) {
+          return res.status(404).send({ message: "Event not found" });
+        }
+
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Server error" });
+      }
+    });
 
 
     // GET registrations filtered by clubId
@@ -770,7 +785,7 @@ async function run() {
           payment,
         } = req.body;
 
-        console.log(req.body);
+        console.log("APPLICATION BODY:", req.body);
         // Validation
         if (
           !clubId ||
